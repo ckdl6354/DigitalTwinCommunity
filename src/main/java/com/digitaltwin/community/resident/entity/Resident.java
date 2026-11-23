@@ -1,12 +1,16 @@
 package com.digitaltwin.community.resident.entity;
 
-import java.time.LocalDate;
-import javax.persistence.*;
-
-import org.springframework.data.annotation.Id;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Column;
+import javax.persistence.Table;
 
 import lombok.Getter;
 import lombok.Setter;
+
+import java.time.LocalDate;
 
 @Entity
 @Getter
