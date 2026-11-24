@@ -1,38 +1,25 @@
 package com.digitaltwin.community.room.service;
 
-
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.digitaltwin.community.resident.entity.Resident;
 import com.digitaltwin.community.room.entity.Room;
 import com.digitaltwin.community.room.repository.RoomRepository;
 
 import lombok.RequiredArgsConstructor;
 
-@Service
-@RequiredArgsConstructor
-@Transactional
-public class RoomService {
-	
-	private final RoomRepository roomRepository;
-
-	public Room save(Room room) {
-		return roomRepository.save(room);
-	}
-	@Transactional(readOnly = true)
-	public List<Room> findAll(){
-		return roomRepository.findAll();
-	}
-	
-	@Transactional(readOnly = true)
-	public Room findById(Long id) {
-		return roomRepository.findById(id).orElseThrow(()->  new IllegalArgumentException("객실을 찾을 수 없습니다."));
-	}
-	
-	public void delete(Long id) {
-		roomRepository.delete(findById(id));
-	}
-	
+public interface RoomService {
+	Room save(Room room);
+	List<Room> findAll();
+	Room findById(Long id);
+	Room findByRoomNumber(String roomNumber);
+	List<Room> findByFloor(Integer floor);
+	List<Room> findByStatus(String status);
+	Room update(Long id, Room updatedRoom);
+	List<Resident> findResidents(Long roomId);
+	long getOccupancy(Long roomId);
+	void delete(Long id);
 }

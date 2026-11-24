@@ -29,4 +29,6 @@ public interface HealthRecordRepository
             Long residentId,
             String measurementType
         );
+    
+    boolean existsByResident_Id(Long residentId);
 }

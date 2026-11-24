@@ -28,4 +28,5 @@ public interface CareRequestRepository
             Long residentId,
             String status
         );
+    boolean existsByResident_Id(Long residentId);
 }
