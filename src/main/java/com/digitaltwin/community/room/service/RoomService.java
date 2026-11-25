@@ -2,9 +2,10 @@ package com.digitaltwin.community.room.service;
 
 import java.util.List;
 
-
 import com.digitaltwin.community.resident.entity.Resident;
 import com.digitaltwin.community.room.entity.Room;
+
+
 
 public interface RoomService {
 	Room save(Room room);
