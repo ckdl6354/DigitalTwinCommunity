@@ -1,31 +1,46 @@
-
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import "./ResidentPage.css";
 
-type Resident = {
-  id: number;
-  name: string;
-  gender: string;
-  age: number;
-  roomNumber: string;
-  careLevel: string;
-  status: string;
-};
+import { getResidents, createResident } from "../api/residentApi";
+import type { Resident } from "../types/resident";
 
-const initialResidents: Resident[] = [
-  { id: 1, name: "김민수", gender: "남성", age: 78, roomNumber: "301호", careLevel: "일반", status: "입주 중" },
-  { id: 2, name: "이영희", gender: "여성", age: 82, roomNumber: "302호", careLevel: "집중", status: "입주 중" },
-  { id: 3, name: "박철수", gender: "남성", age: 75, roomNumber: "203호", careLevel: "일반", status: "입주 중" },
-  { id: 4, name: "최정숙", gender: "여성", age: 86, roomNumber: "405호", careLevel: "주의", status: "외출 중" },
-  { id: 5, name: "정동현", gender: "남성", age: 80, roomNumber: "502호", careLevel: "일반", status: "입주 중" },
-  { id: 6, name: "한미자", gender: "여성", age: 79, roomNumber: "105호", careLevel: "집중", status: "퇴소" },
-];
 
 function ResidentPage() {
-  const [residents, setResidents] = useState(initialResidents);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("전체");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [residents,setResidents] = useState<Resident[]>([]);
+  const [loading,setLoading] = useState(true);
+  const [error,setError] = useState("");
+
+  useEffect(()=>{
+    let isMounted = true;
+    const loadResidents = async () =>{
+      try{
+        setLoading(true);
+        setError("");
+        const data = await getResidents();
+        if(isMounted){
+          setResidents(data);
+        }
+      }catch(error){
+        console.error("입주민 목록 조회 실패:",error);
+        if(isMounted){
+          setError("입주민 목록을 불러오지 못했습니다. 백엔드 서버를 확인해 주세요.");
+        }
+      }finally{
+        if(isMounted){
+          setLoading(false);
+        }
+      }
+    };
+    void loadResidents();
+
+    return () => {
+      isMounted = false;
+    };
+  },[]);
 
   const [form, setForm] = useState({
     name: "",
@@ -35,42 +50,57 @@ function ResidentPage() {
     careLevel: "일반",
   });
 
-  const filteredResidents = useMemo(() => {
-    return residents.filter((resident) => {
-      const matchesSearch =
-        resident.name.includes(search.trim()) ||
-        resident.roomNumber.includes(search.trim());
+  const filteredResidents = useMemo(()=>{
+    return residents.filter((resident)=>{
+      const keyword = search.trim().toLowerCase();
 
-      const matchesStatus =
-        statusFilter === "전체" || resident.status === statusFilter;
+      const matchesSearch  = resident.name.toLowerCase().includes(keyword) || (resident.roomNumber ?? "").toLowerCase().includes(keyword);
+    
+      const matchesStatus = statusFilter == "전체" || resident.status == statusFilter;
 
       return matchesSearch && matchesStatus;
     });
-  }, [residents, search, statusFilter]);
+  },[residents,search,statusFilter]);
 
-  const handleRegister = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleRegister = async (
+    event:FormEvent<HTMLFormElement>
+  ) =>{
     event.preventDefault();
+    setError("");
+    
 
-    const newResident: Resident = {
-      id: Math.max(0, ...residents.map((resident) => resident.id)) + 1,
-      name: form.name.trim(),
+    const newResident = {
+      name : form.name.trim(),
       gender: form.gender,
-      age: Number(form.age),
-      roomNumber: form.roomNumber.trim(),
-      careLevel: form.careLevel,
-      status: "입주 중",
+      age:Number(form.age),
+      roomNumber:form.roomNumber.trim(),
+      careLevel:form.careLevel,
+      status:"입주 중",
     };
+    try{
+      const savedResident = await createResident(newResident);
 
-    setResidents((previous) => [...previous, newResident]);
-    setForm({
-      name: "",
-      gender: "여성",
-      age: "",
-      roomNumber: "",
-      careLevel: "일반",
-    });
-    setIsModalOpen(false);
+      // 서버에서 받은 실제 저장 결과 사용
+      setResidents((previous)=>[
+        savedResident,
+        ...previous,
+      ]);
+        setForm({
+          name:"",
+          gender:"여성",
+          age:"",
+          roomNumber:"",
+          careLevel:"일반",
+        });
+        setIsModalOpen(false);
+    }catch(error){
+      console.error("입주민 등록 실패:",error);
+      setError(
+        "입주민 등록에 실패했습니다. 서버 로그를 확인해주세요."
+      );
+    }
   };
+
 
   const activeCount = residents.filter(
     (resident) => resident.status === "입주 중"
@@ -165,7 +195,19 @@ function ResidentPage() {
             </thead>
 
             <tbody>
-              {filteredResidents.length > 0 ? (
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="resident-empty">
+                      입주민 정보를 불러오는 중입니다...
+                  </td>
+                </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={7} className="resident-empty">
+                      {error}
+                    </td>
+                  </tr>
+              ) : filteredResidents.length > 0 ? (
                 filteredResidents.map((resident) => (
                   <tr key={resident.id}>
                     <td>{resident.id}</td>
@@ -174,17 +216,17 @@ function ResidentPage() {
                         {resident.name}
                       </strong>
                     </td>
-                    <td>{resident.gender}</td>
-                    <td>{resident.age}세</td>
-                    <td>{resident.roomNumber}</td>
+                    <td>{resident.gender || "-"}</td>
+                    <td>{resident.age ?? "-"}{resident.age != null ? "세":""}</td>
+                    <td>{resident.roomNumber || "-"}</td>
                     <td>
                       <span className="care-level">
-                        {resident.careLevel}
+                        {resident.careLevel || "미지정"}
                       </span>
                     </td>
                     <td>
-                      <span className={`resident-status ${getStatusClass(resident.status)}`}>
-                        {resident.status}
+                      <span className={`resident-status ${getStatusClass(resident.status || "")}`}>
+                        {resident.status || "미지정"}
                       </span>
                     </td>
                   </tr>

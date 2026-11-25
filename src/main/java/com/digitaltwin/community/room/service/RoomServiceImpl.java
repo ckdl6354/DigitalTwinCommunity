@@ -2,9 +2,12 @@ package com.digitaltwin.community.room.service;
 
 import java.util.List;
 
+import org.springframework.stereotype.Service;
+
 import com.digitaltwin.community.resident.entity.Resident;
 import com.digitaltwin.community.room.entity.Room;
 
+@Service
 public class RoomServiceImpl implements RoomService {
 
 	@Override
