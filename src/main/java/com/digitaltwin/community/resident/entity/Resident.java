@@ -2,7 +2,7 @@ package com.digitaltwin.community.resident.entity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
@@ -47,6 +47,7 @@ public class Resident {
 	
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "room_id")
+	@JsonIgnore
 	private Room room;
 	
 	@PrePersist

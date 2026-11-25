@@ -2,7 +2,6 @@ package com.digitaltwin.community.resident.controller;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,8 +19,8 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/residents")
 @RequiredArgsConstructor
 public class ResidentController {
-	@Autowired
-	private ResidentService residentService;
+	
+	private final ResidentService residentService;
 	
 	@PostMapping
 	public Resident save(@RequestBody Resident resident) {

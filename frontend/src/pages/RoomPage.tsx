@@ -1,7 +1,8 @@
 
-import { useMemo, useState } from "react";
+import { useEffect,useMemo, useState } from "react";
 import "./RoomPage.css";
-
+import { getRooms,createRoom } from "../api/roomApi";
+import type { Room,RoomCreateRequest } from "../api/roomApi";
 type Room = {
   id: number;
   roomNumber: string;
@@ -13,16 +14,7 @@ type Room = {
   status: "사용 중" | "공실" | "점검 중";
 };
 
-const initialRooms: Room[] = [
-  { id: 1, roomNumber: "501호", floor: 5, roomType: "1인실", capacity: 1, occupied: 1, area: 24, status: "사용 중" },
-  { id: 2, roomNumber: "502호", floor: 5, roomType: "2인실", capacity: 2, occupied: 2, area: 34, status: "사용 중" },
-  { id: 3, roomNumber: "503호", floor: 5, roomType: "1인실", capacity: 1, occupied: 0, area: 24, status: "공실" },
-  { id: 4, roomNumber: "401호", floor: 4, roomType: "2인실", capacity: 2, occupied: 1, area: 34, status: "사용 중" },
-  { id: 5, roomNumber: "402호", floor: 4, roomType: "특실", capacity: 1, occupied: 1, area: 42, status: "사용 중" },
-  { id: 6, roomNumber: "403호", floor: 4, roomType: "1인실", capacity: 1, occupied: 0, area: 24, status: "공실" },
-  { id: 7, roomNumber: "301호", floor: 3, roomType: "1인실", capacity: 1, occupied: 0, area: 24, status: "점검 중" },
-  { id: 8, roomNumber: "302호", floor: 3, roomType: "2인실", capacity: 2, occupied: 2, area: 34, status: "사용 중" },
-];
+
 
 function RoomPage() {
   const [rooms, setRooms] = useState<Room[]>(initialRooms);
