@@ -6,15 +6,9 @@ import RoomPage from "./pages/RoomPage";
 import FacilityPage from "./pages/FacilityPage";
 import HealthPage from "./pages/HealthPage";
 import CarePage from "./pages/CarePage";
-
-const navItems = [
-  { id: "dashboard", icon: "▦", label: "통합 관제" },
-  { id: "residents", icon: "♙", label: "입주민 관리" },
-  { id: "rooms", icon: "▤", label: "객실 관리" },
-  { id: "facilities", icon: "⌂", label: "시설 관리" },
-  { id: "health", icon: "♡", label: "건강 기록" },
-  { id: "care", icon: "✚", label: "돌봄 요청" },
-];
+import Sidebar, { navItems } from "./components/Sidebar";
+import type { MenuId } from "./components/Sidebar";
+import Header from "./components/Header";
 
 const stats = [
   { label: "전체 입주민", value: "128", unit: "명", note: "현재 등록 인원", icon: "♙", color: "green" },
@@ -44,100 +38,23 @@ const floors = [
 ];
 
 function App() {
-  const [activeMenu, setActiveMenu] = useState("dashboard");
-  const [showAlerts, setShowAlerts] = useState(false);
+  const [activeMenu, setActiveMenu] = useState<MenuId>("dashboard");
 
   const currentMenu =
-    navItems.find((item) => item.id === activeMenu) ?? navItems[0];
+  navItems.find((item) => item.id === activeMenu) ?? navItems[0];
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-mark">S</div>
-          <div>
-            <strong>SilverLife</strong>
-            <span>DIGITAL TWIN PLATFORM</span>
-          </div>
-        </div>
-
-        <div className="side-label">MAIN MENU</div>
-        <nav className="side-nav">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              className={`nav-item ${activeMenu === item.id ? "active" : ""}`}
-              onClick={() => setActiveMenu(item.id)}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              <span>{item.label}</span>
-              {item.id === "care" && <span className="nav-count">7</span>}
-            </button>
-          ))}
-        </nav>
-
-        <div className="sidebar-bottom">
-          <div className="system-card">
-            <div className="system-card-top">
-              <span className="status-dot" />
-              시스템 정상
-            </div>
-            <p>모든 서비스가 정상적으로 운영 중입니다.</p>
-          </div>
-          <div className="profile">
-            <div className="profile-avatar">관리</div>
-            <div className="profile-info">
-              <strong>관리자</strong>
-              <span>운영 관리자</span>
-            </div>
-            <span className="profile-more">···</span>
-          </div>
-        </div>
-      </aside>
+     <Sidebar 
+      activeMenu={activeMenu}
+      onMenuChange={setActiveMenu}
+     />
 
       <main className="main-area">
-        <header className="topbar">
-          <div className="breadcrumb">
-            <span>SilverLife</span>
-            <span className="breadcrumb-divider">/</span>
-            <strong>{currentMenu.label}</strong>
-          </div>
-
-          <div className="topbar-actions">
-            <span className="today">
-              {new Date().toLocaleDateString("ko-KR", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-                weekday: "short",
-              })}
-            </span>
-            <div className="notification-wrap">
-              <button
-                className="icon-button"
-                aria-label="알림"
-                onClick={() => setShowAlerts(!showAlerts)}
-              >
-                ♧
-                <span className="notification-dot" />
-              </button>
-              {showAlerts && (
-                <div className="notification-popover">
-                  <strong>새로운 알림</strong>
-                  <p>확인이 필요한 알림이 3건 있습니다.</p>
-                  {alerts.map((alert) => (
-                    <div className="popover-alert" key={alert.title}>
-                      <span className={`mini-dot ${alert.color}`} />
-                      <span>{alert.title}</span>
-                      <small>{alert.time}</small>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="top-profile">관</div>
-          </div>
-        </header>
+        <Header 
+          title={currentMenu.label}
+          alerts={alerts}
+        />
 
             <div className="content">
               {activeMenu === "dashboard" ? (
