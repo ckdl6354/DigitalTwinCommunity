@@ -1,6 +1,11 @@
 
 import { useState } from "react";
 import "./App.css";
+import ResidentPage from "./pages/ResidentPage";
+import RoomPage from "./pages/RoomPage";
+import FacilityPage from "./pages/FacilityPage";
+import HealthPage from "./pages/HealthPage";
+import CarePage from "./pages/CarePage";
 
 const navItems = [
   { id: "dashboard", icon: "▦", label: "통합 관제" },
@@ -134,9 +139,10 @@ function App() {
           </div>
         </header>
 
-        <div className="content">
-          {activeMenu === "dashboard" ? (
-            <>
+            <div className="content">
+              {activeMenu === "dashboard" ? (
+                <>
+
               <section className="page-heading">
                 <div>
                   <div className="eyebrow">SILVER TOWN CONTROL CENTER</div>
@@ -338,24 +344,35 @@ function App() {
                 <span>Dashboard · Sample Data</span>
               </footer>
             </>
-          ) : (
-            <section className="coming-soon panel">
-              <div className="coming-icon">{currentMenu.icon}</div>
-              <span className="section-kicker">MODULE PREPARATION</span>
-              <h1>{currentMenu.label}</h1>
-              <p>이 화면은 다음 개발 단계에서 구현할 예정입니다.</p>
-              <button
-                className="primary-button"
-                onClick={() => setActiveMenu("dashboard")}
-              >
-                대시보드로 돌아가기
-              </button>
-            </section>
-          )}
-        </div>
-      </main>
-    </div>
-  );
+            ) : activeMenu === "residents" ? (
+              <ResidentPage />
+            ) : activeMenu === "rooms" ? (
+              <RoomPage />
+            ) : activeMenu === "facilities" ? (
+              <FacilityPage />
+            ) : activeMenu === "health" ? (
+              <HealthPage />
+            ) : activeMenu === "care" ? (
+              <CarePage />
+            ) : (
+              <section className="coming-soon panel">
+                <div className="coming-icon">{currentMenu.icon}</div>
+                <span className="section-kicker">MODULE PREPARATION</span>
+                <h1>{currentMenu.label}</h1>
+                <p>이 화면은 다음 개발 단계에서 구현할 예정입니다.</p>
+                <button
+                  className="primary-button"
+                  onClick={() => setActiveMenu("dashboard")}
+                >
+                  대시보드로 돌아가기
+                </button>
+              </section>
+            )}
+          </div>
+        </main>
+      </div>
+    );
 }
+
 
 export default App;
