@@ -1,29 +1,9 @@
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import "./FacilityPage.css";
-
-type Facility = {
-  id: number;
-  facilityName: string;
-  facilityType: string;
-  floor: number;
-  status: "정상 운영" | "점검 중" | "운영 중단";
-  positionX: number;
-  positionY: number;
-  positionZ: number;
-};
-
-const initialFacilities: Facility[] = [
-  { id: 1, facilityName: "중앙 식당", facilityType: "식당", floor: 1, status: "정상 운영", positionX: 10, positionY: 0, positionZ: 20 },
-  { id: 2, facilityName: "건강 관리실", facilityType: "의료 시설", floor: 1, status: "정상 운영", positionX: 25, positionY: 0, positionZ: 15 },
-  { id: 3, facilityName: "실내 운동실", facilityType: "운동 시설", floor: 2, status: "정상 운영", positionX: 30, positionY: 3, positionZ: 12 },
-  { id: 4, facilityName: "휴게 라운지", facilityType: "휴게 시설", floor: 2, status: "점검 중", positionX: 15, positionY: 3, positionZ: 25 },
-  { id: 5, facilityName: "물리 치료실", facilityType: "의료 시설", floor: 3, status: "정상 운영", positionX: 22, positionY: 6, positionZ: 18 },
-  { id: 6, facilityName: "문화 활동실", facilityType: "문화 시설", floor: 3, status: "운영 중단", positionX: 35, positionY: 6, positionZ: 10 },
-  { id: 7, facilityName: "옥상 정원", facilityType: "휴게 시설", floor: 5, status: "정상 운영", positionX: 40, positionY: 12, positionZ: 30 },
-  { id: 8, facilityName: "프로그램실", facilityType: "문화 시설", floor: 4, status: "정상 운영", positionX: 18, positionY: 9, positionZ: 22 },
-];
+import { getFacilities,createFacility,deleteFacility } from "../api/facilityApi";
+import type { Facility,FacilityCreateRequest } from "../api/facilityApi";
 
 const facilityTypes = [
   "식당",
@@ -35,12 +15,34 @@ const facilityTypes = [
 ];
 
 function FacilityPage() {
-  const [facilities, setFacilities] = useState<Facility[]>(initialFacilities);
   const [search, setSearch] = useState("");
   const [floorFilter, setFloorFilter] = useState("전체");
   const [typeFilter, setTypeFilter] = useState("전체");
   const [statusFilter, setStatusFilter] = useState("전체");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [facilities,setFacilities] = useState<Facility[]>([]);
+  const [loading,setLoading] = useState(true);
+  const [error,setError] = useState("");
+
+
+  useEffect (()=> {
+    const loadFacilities = async()=> {
+      try{
+        setLoading(true);
+        setError("");
+
+        const data = await getFacilities();
+        setFacilities(data);
+      }catch(error){
+        console.error("시설 목록 조회 실패:",error);
+        setError("시설 정보를 불러오지 못했습니다.");
+      }finally{
+        setLoading(false);
+      }
+    };
+    loadFacilities();
+  },[]);
+
 
   const [form, setForm] = useState({
     facilityName: "",
@@ -97,37 +99,65 @@ function FacilityPage() {
     return "facility-status-stopped";
   };
 
-  const handleRegister = (event: FormEvent<HTMLFormElement>) => {
+  const handleRegister = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const newFacility: Facility = {
-      id: Math.max(0, ...facilities.map((facility) => facility.id)) + 1,
-      facilityName: form.facilityName.trim(),
-      facilityType: form.facilityType,
-      floor: Number(form.floor),
-      status: form.status,
-      positionX: Number(form.positionX),
-      positionY: Number(form.positionY),
-      positionZ: Number(form.positionZ),
+    const facilityName = form.facilityName.trim();
+
+    if(!facilityName){
+      alert("시설명을 입력해주세요.");
+      return;
+    }
+
+    const newFacility: FacilityCreateRequest = {
+      facilityName,
+      facilityType:form.facilityType,
+      floor:Number(form.floor),
+      status:form.status,
+      positionX:Number(form.positionX),
+      positionY:Number(form.positionY),
+      positionZ:Number(form.positionZ),
     };
+    try{
+      const savedFacility = await createFacility(newFacility);
 
-    setFacilities((previous) => [...previous, newFacility]);
+      setFacilities((previous) => [...previous, savedFacility]);
 
-    setForm({
-      facilityName: "",
-      facilityType: "식당",
-      floor: "1",
-      status: "정상 운영",
-      positionX: "0",
-      positionY: "0",
-      positionZ: "0",
-    });
+      setForm({
+        facilityName: "",
+        facilityType: "식당",
+        floor: "1",
+        status: "정상 운영",
+        positionX: "0",
+        positionY: "0",
+        positionZ: "0",
+      });
 
-    setSearch("");
-    setFloorFilter("전체");
-    setTypeFilter("전체");
-    setStatusFilter("전체");
-    setIsModalOpen(false);
+      setSearch("");
+      setFloorFilter("전체");
+      setTypeFilter("전체");
+      setStatusFilter("전체");
+      setIsModalOpen(false);
+      }catch(error) {
+      console.error("시설 등록 실패",error);
+      alert("시설 등록에 실패했습니다. 백엔드 콘솔을 확인해주세요.");
+    }
+  };
+    const handleDelete  = async (id: number,facilityName:string) => {
+    const confirmed = window.confirm(`"${facilityName}" 시설을 삭제하시겠습니까?`);
+
+    if(!confirmed) return;
+
+    try{
+      await deleteFacility(id);
+      setFacilities((previous)=>previous.filter((facility)=>facility.id !== id)
+    );
+    alert("시설이 삭제되었습니다.");
+
+    }catch(error){
+      console.error("시설 삭제 실패:",error);
+      alert("시설 삭제에 실패했습니다. 백엔드 콘솔을 확인해 주세요.");
+    }
   };
 
   return (
@@ -308,12 +338,26 @@ function FacilityPage() {
                 <th>위치</th>
                 <th>공간 좌표 (X, Y, Z)</th>
                 <th>운영 상태</th>
+                <th>관리</th>
               </tr>
             </thead>
 
             <tbody>
-              {filteredFacilities.length > 0 ? (
+              {loading ? (
+              <tr>
+                <td colSpan={6} className="facility-empty">
+                  시설 정보를 불러오는 중입니다...
+                </td>
+              </tr>
+              ): error ? (
+                <tr>
+                  <td colSpan={6} className="facility-empty">
+                    {error}
+                  </td>
+                </tr>
+              ) : filteredFacilities.length > 0 ? (
                 filteredFacilities.map((facility) => (
+                  
                   <tr key={facility.id}>
                     <td>
                       <strong className="facility-name">
@@ -337,7 +381,18 @@ function FacilityPage() {
                         {facility.status}
                       </span>
                     </td>
+                    <td>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleDelete(facility.id, facility.facilityName)
+                      }
+                    >
+                      삭제
+                    </button>
+                  </td>
                   </tr>
+                  
                 ))
               ) : (
                 <tr>

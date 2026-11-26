@@ -1,27 +1,58 @@
-
-import { useEffect,useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./RoomPage.css";
-import { getRooms,createRoom } from "../api/roomApi";
-import type { Room,RoomCreateRequest } from "../api/roomApi";
-type Room = {
-  id: number;
-  roomNumber: string;
-  floor: number;
-  roomType: string;
-  capacity: number;
-  occupied: number;
-  area: number;
-  status: "사용 중" | "공실" | "점검 중";
-};
-
-
+import {getRooms,createRoom,getRoomOccupancy} from "../api/roomApi";
+import type {Room,RoomCreateRequest} from "../api/roomApi";
 
 function RoomPage() {
-  const [rooms, setRooms] = useState<Room[]>(initialRooms);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading,setLoading] = useState(true);
+  const [error,setError] = useState("");
   const [search, setSearch] = useState("");
   const [floorFilter, setFloorFilter] = useState("전체");
   const [statusFilter, setStatusFilter] = useState("전체");
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(()=> {
+    let isMounted = true;
+
+    const loadRooms = async () => {
+      try{
+        setLoading(true);
+        setError("");
+
+        const data = await getRooms();
+
+        const roomsWithOccupancy = await Promise.all(
+          data.map(async (room)=>{
+            try{
+              const occupied = await getRoomOccupancy(room.id);
+              return {...room,occupied};
+            }catch {
+              return {...room,occupied:0};
+            }
+          })
+        );
+      if(isMounted){
+        setRooms(roomsWithOccupancy);
+      }
+    }catch(err){
+      console.error("객실 목록 조회 실패:",err);
+
+      if(isMounted){
+        setError("객실 정보를 불러오지 못했습니다.");
+      }
+    }finally{
+      if(isMounted){
+        setLoading(false);
+      }
+    }
+  };
+    void loadRooms();
+    return ()=>{
+      isMounted = false;
+    };
+  },[]);
+  
 
   const [form, setForm] = useState({
     roomNumber: "",
@@ -82,7 +113,7 @@ function RoomPage() {
     });
   };
 
-  const handleRegister = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleRegister = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const roomNumber = form.roomNumber.trim();
@@ -101,32 +132,38 @@ function RoomPage() {
       return;
     }
 
-    const newRoom: Room = {
-      id: Math.max(0, ...rooms.map((room) => room.id)) + 1,
+    const newRoom: RoomCreateRequest = {
       roomNumber,
-      floor: Number(form.floor),
-      roomType: form.roomType,
-      capacity: Number(form.capacity),
-      occupied: form.status === "사용 중" ? 1:0,
-      area: Number(form.area),
-      status: form.status,
+      floor : Number(form.floor),
+      roomType:form.roomType,
+      capacity:Number(form.capacity),
+      area:Number(form.area),
+      status:form.status,
     };
+    try{
 
-    setRooms((previous) => [...previous, newRoom]);
+      const savedRoom = await createRoom(newRoom);
+      setRooms((previous) => [...previous, {...savedRoom,occupied:0},]);
 
-    setSearch("");
-    setFloorFilter("전체");
-    setStatusFilter("전체");
-    setForm({
-      roomNumber: "",
-      floor: "1",
-      roomType: "1인실",
-      capacity: "1",
-      area: "24",
-      status: "공실",
-    });
-    setIsModalOpen(false);
+      setSearch("");
+      setFloorFilter("전체");
+      setStatusFilter("전체");
+
+      setForm({
+        roomNumber: "",
+        floor: "1",
+        roomType: "1인실",
+        capacity: "1",
+        area: "24",
+        status: "공실",
+      });
+      setIsModalOpen(false);
+    }catch (error) {
+      console.error("객실 등로 실패:",error)
+      alert("객실 등록에 실패했습니다. 백엔드 콘솔을 확인 해 주세요.");
+    }
   };
+  
 
   const getStatusClass = (status: Room["status"]) => {
     if (status === "사용 중") return "room-status-active";
@@ -285,7 +322,19 @@ function RoomPage() {
             </thead>
 
             <tbody>
-              {filteredRooms.length > 0 ? (
+            {loading ?(
+              <tr>
+                <td colSpan={6} className="room-empty">
+                  객실 정보를 불러오는 중입니다...
+                </td>
+              </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={6} className="room-empty">
+                    {error}
+                  </td>
+                </tr>
+              ) : filteredRooms.length > 0 ? (
                 filteredRooms.map((room) => (
                   <tr key={room.id}>
                     <td>

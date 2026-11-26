@@ -574,3 +574,18 @@
     padding-left: 9px;
   }
 }
+.facility-delete-button {
+  padding: 7px 13px;
+  border: 1px solid #e5a3a3;
+  border-radius: 7px;
+  background: #fff5f5;
+  color: #c34b4b;
+  cursor: pointer;
+  font-size: 13px;
+  transition: 0.2s;
+}
+
+.facility-delete-button:hover {
+  background: #c34b4b;
+  color: white;
+}
