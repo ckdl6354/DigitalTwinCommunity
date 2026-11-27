@@ -40,3 +40,16 @@ export const createFacility = async (
 export const deleteFacility = async (id: number): Promise<void> => {
   await api.delete(`/facility/${id}`);
 };
+
+
+//시설 정보 수정
+export const updateFacility = async (
+      id:number,
+      data: FacilityCreateRequest
+): Promise<Facility> => {
+      const response = await api.put<Facility>(
+      `/facility/${id}`,
+      data
+  );
+      return response.data;
+};

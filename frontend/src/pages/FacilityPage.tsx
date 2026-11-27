@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import "./FacilityPage.css";
-import { getFacilities,createFacility,deleteFacility } from "../api/facilityApi";
+import { getFacilities,createFacility,deleteFacility, updateFacility } from "../api/facilityApi";
 import type { Facility,FacilityCreateRequest } from "../api/facilityApi";
 
 const facilityTypes = [
@@ -20,6 +20,7 @@ function FacilityPage() {
   const [typeFilter, setTypeFilter] = useState("전체");
   const [statusFilter, setStatusFilter] = useState("전체");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingFacility,setEditingFacility] = useState<Facility | null>(null);
   const [facilities,setFacilities] = useState<Facility[]>([]);
   const [loading,setLoading] = useState(true);
   const [error,setError] = useState("");
@@ -119,9 +120,16 @@ function FacilityPage() {
       positionZ:Number(form.positionZ),
     };
     try{
+      if(editingFacility){
+        const updatedFacility  = await updateFacility ( editingFacility.id,newFacility);
+        setFacilities((previous)=>
+          previous.map((facliity)=>
+            facliity.id == updatedFacility .id ? updatedFacility :facliity));
+      } else {
       const savedFacility = await createFacility(newFacility);
 
       setFacilities((previous) => [...previous, savedFacility]);
+      }
 
       setForm({
         facilityName: "",
@@ -138,7 +146,9 @@ function FacilityPage() {
       setTypeFilter("전체");
       setStatusFilter("전체");
       setIsModalOpen(false);
-      }catch(error) {
+      setEditingFacility(null);
+
+      } catch (error) {
       console.error("시설 등록 실패",error);
       alert("시설 등록에 실패했습니다. 백엔드 콘솔을 확인해주세요.");
     }
@@ -382,6 +392,23 @@ function FacilityPage() {
                       </span>
                     </td>
                     <td>
+                    <button type="button" onClick={()=> {
+                      setEditingFacility(facility);
+                      setForm({
+                        facilityName:facility.facilityName,
+                        facilityType:facility.facilityType,
+                        floor:String(facility.floor),
+                        status:facility.status,
+                        positionX:String(facility.positionX),
+                        positionY:String(facility.positionY),
+                        positionZ:String(facility.positionZ),
+                      });
+                      setIsModalOpen(true);
+                    }}
+                    >
+                      수정
+                    </button>
+
                     <button
                       type="button"
                       onClick={() =>
@@ -396,7 +423,7 @@ function FacilityPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="facility-empty">
+                  <td colSpan={6} className="facility-empty">
                     검색 조건에 맞는 시설이 없습니다.
                   </td>
                 </tr>
