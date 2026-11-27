@@ -467,8 +467,10 @@ function HealthPage() {
           >
             <div className="health-modal-heading">
               <div>
-                <span className="health-eyebrow">NEW HEALTH RECORD</span>
-                <h2>건강 기록 등록</h2>
+                <span className="health-eyebrow">
+                  {editingRecord ? "EDIT HEALTH RECORD" : "NEW HEALTH RECORD"}
+                </span>
+                <h2>{editingRecord ? "건강 기록 수정":"건강 기록 등록"}</h2>
               </div>
               <button
                 type="button"
@@ -579,7 +581,7 @@ function HealthPage() {
                 취소
               </button>
               <button type="submit" className="health-primary-button">
-                등록하기
+                {editingRecord ? "수정하기":"등록하기"}
               </button>
             </div>
           </form>
