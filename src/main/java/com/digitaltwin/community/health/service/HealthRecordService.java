@@ -12,5 +12,6 @@ public interface HealthRecordService {
 	List<HealthRecordEntity> findByResident(Long residentId);
 	List<HealthRecordEntity> findByPeriod(Long residentId, LocalDateTime startDate, LocalDateTime endDate);
 	List<HealthRecordEntity> findByMeasurementType(Long residentId, String measurementType);
+	HealthRecordEntity update(Long id,HealthRecordEntity updatedRecordEntity);
 	void delete(Long id);
 }

@@ -31,11 +31,11 @@ public class HealthRecordServiceImpl implements HealthRecordService {
 		Resident resident = residentRepository.findById(residentId)
 				.orElseThrow(() -> new IllegalArgumentException("입주자를 찾을 수 없습니다."));
 		record.setResident(resident);
-		
+
 		if (record.getRecordedAt() == null) {
 			record.setRecordedAt(LocalDateTime.now());
 		}
-		
+
 		return healthRecordRepository.save(record);
 	}
 
@@ -62,27 +62,29 @@ public class HealthRecordServiceImpl implements HealthRecordService {
 	@Transactional(readOnly = true)
 	public List<HealthRecordEntity> findByPeriod(Long residentId, LocalDateTime startDate, LocalDateTime endDate) {
 		checkResidentExists(residentId);
-		
-		if(startDate == null || endDate == null) {
+
+		if (startDate == null || endDate == null) {
 			throw new IllegalArgumentException("조회 시작일과 종료일은 필수입니다.");
 		}
-		
-		if(startDate.isAfter(endDate)) {
+
+		if (startDate.isAfter(endDate)) {
 			throw new IllegalArgumentException("시작일은 종료일보다 늦을 수 없습니다.");
 		}
-		return healthRecordRepository.findByResident_IdAndRecordedAtBetweenOrderByRecordedAtDesc(residentId, startDate, endDate);
+		return healthRecordRepository.findByResident_IdAndRecordedAtBetweenOrderByRecordedAtDesc(residentId, startDate,
+				endDate);
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public List<HealthRecordEntity> findByMeasurementType(Long residentId, String measurementType) {
 		checkResidentExists(residentId);
-		
-		if(!StringUtils.hasText(measurementType)) {
+
+		if (!StringUtils.hasText(measurementType)) {
 			throw new IllegalArgumentException("측정 종류를 입력해야 합니다.");
 		}
-		
-		return healthRecordRepository.findByResident_IdAndMeasurementTypeOrderByRecordedAtDesc(residentId, measurementType);
+
+		return healthRecordRepository.findByResident_IdAndMeasurementTypeOrderByRecordedAtDesc(residentId,
+				measurementType);
 	}
 
 	@Override
@@ -103,5 +105,20 @@ public class HealthRecordServiceImpl implements HealthRecordService {
 				|| !StringUtils.hasText(record.getMeasurementType())) {
 			throw new IllegalArgumentException("측정 종류, 측정값, 측정 단위는 필수입니다.");
 		}
+	}
+
+	@Override
+	public HealthRecordEntity update(Long id, HealthRecordEntity updatedRecordEntity) {
+		validateRecord(updatedRecordEntity);
+		HealthRecordEntity healthRecord = findById(id);
+
+		healthRecord.setMeasurementValue(updatedRecordEntity.getMeasurementValue());
+		healthRecord.setMeasurementUnit(updatedRecordEntity.getMeasurementUnit());
+		healthRecord.setMeasurementType(updatedRecordEntity.getMeasurementType());
+		if (updatedRecordEntity.getRecordedAt() != null) {
+		healthRecord.setRecordedAt(updatedRecordEntity.getRecordedAt());
+		}
+		healthRecord.setMemo(updatedRecordEntity.getMemo());
+		return healthRecordRepository.save(healthRecord);
 	}
 }

@@ -1,7 +1,10 @@
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import "./HealthPage.css";
+import { getHealthRecords, createHealthRecord, updateHealthRecord, deleteHealthRecord } from "../api/healthApi";
+import { getResidents } from "../api/residentApi";
+import type { Resident } from "../types/resident";
 
 type HealthRecord = {
   id: number;
@@ -14,78 +17,6 @@ type HealthRecord = {
   memo: string;
 };
 
-const initialRecords: HealthRecord[] = [
-  {
-    id: 1,
-    residentName: "김민수",
-    roomNumber: "301호",
-    measurementType: "혈압",
-    measurementValue: "120/80",
-    measurementUnit: "mmHg",
-    recordedAt: "2026-11-25",
-    memo: "정기 건강 측정",
-  },
-  {
-    id: 2,
-    residentName: "이영희",
-    roomNumber: "302호",
-    measurementType: "체온",
-    measurementValue: "36.5",
-    measurementUnit: "°C",
-    recordedAt: "2026-11-25",
-    memo: "일상 건강 기록",
-  },
-  {
-    id: 3,
-    residentName: "박철수",
-    roomNumber: "203호",
-    measurementType: "맥박",
-    measurementValue: "72",
-    measurementUnit: "bpm",
-    recordedAt: "2026-11-25",
-    memo: "정기 측정",
-  },
-  {
-    id: 4,
-    residentName: "최정숙",
-    roomNumber: "405호",
-    measurementType: "혈당",
-    measurementValue: "105",
-    measurementUnit: "mg/dL",
-    recordedAt: "2026-11-24",
-    memo: "식후 측정",
-  },
-  {
-    id: 5,
-    residentName: "정동현",
-    roomNumber: "502호",
-    measurementType: "체중",
-    measurementValue: "63.5",
-    measurementUnit: "kg",
-    recordedAt: "2026-11-24",
-    memo: "정기 측정",
-  },
-  {
-    id: 6,
-    residentName: "한미자",
-    roomNumber: "105호",
-    measurementType: "혈압",
-    measurementValue: "118/76",
-    measurementUnit: "mmHg",
-    recordedAt: "2026-11-23",
-    memo: "정기 건강 측정",
-  },
-  {
-    id: 7,
-    residentName: "김민수",
-    roomNumber: "301호",
-    measurementType: "체온",
-    measurementValue: "36.6",
-    measurementUnit: "°C",
-    recordedAt: "2026-11-23",
-    memo: "일상 건강 기록",
-  },
-];
 
 const measurementTypes = [
   "혈압",
@@ -96,15 +27,6 @@ const measurementTypes = [
   "기타",
 ];
 
-const residentOptions = [
-  { name: "김민수", room: "301호" },
-  { name: "이영희", room: "302호" },
-  { name: "박철수", room: "203호" },
-  { name: "최정숙", room: "405호" },
-  { name: "정동현", room: "502호" },
-  { name: "한미자", room: "105호" },
-];
-
 function getLocalDate() {
   const now = new Date();
   const offset = now.getTimezoneOffset() * 60000;
@@ -112,11 +34,34 @@ function getLocalDate() {
 }
 
 function HealthPage() {
-  const [records, setRecords] = useState<HealthRecord[]>(initialRecords);
+  const [records, setRecords] = useState<HealthRecord[]>([]);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("전체");
   const [dateFilter, setDateFilter] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<HealthRecord | null>(null);
+  const [residentOptions, setResidentOptions] = useState<Resident[]>([]);
+
+  useEffect(() => {
+    const loadResidents = async () => {
+      try {
+        const data = await getResidents();
+        setResidentOptions(data);
+
+        //첫번째 입주자를 기본 선택값으로 설정
+        if (data.length > 0) {
+          setForm((previous) => ({
+            ...previous,
+            residentName: data[0].name,
+          }));
+        }
+      } catch (error) {
+        console.error("입주자 목록 조회 실패:", error);
+        alert("입주자 목록을 불러오지 못했습니다.");
+      }
+    };
+    loadResidents();
+  }, [])
 
   const [form, setForm] = useState({
     residentName: "김민수",
@@ -126,6 +71,30 @@ function HealthPage() {
     recordedAt: getLocalDate(),
     memo: "",
   });
+
+  useEffect(() => {
+    const loadRecords = async () => {
+      try {
+        const data = await getHealthRecords();
+        const mappedRecords: HealthRecord[] = data.map((record) => ({
+          id: record.id,
+          residentName: record.resident?.name ?? "입주민 정보 없음",
+          roomNumber: record.resident?.roomNumber ?? "-",
+          measurementType: record.measurementType,
+          measurementValue: String(record.measurementValue),
+          measurementUnit: record.measurementUnit,
+          recordedAt: record.recordedAt?.slice(0, 10) ?? "",
+          memo: record.memo ?? "",
+        }));
+
+        setRecords(mappedRecords);
+      } catch (error) {
+        console.log("건강 기록 조회 실패:", error);
+        alert("건강 기록을 불러오지 못했습니다.");
+      }
+    };
+    loadRecords();
+  }, []);
 
   const filteredRecords = useMemo(() => {
     return records
@@ -177,7 +146,9 @@ function HealthPage() {
     });
   };
 
-  const handleRegister = (event: FormEvent<HTMLFormElement>) => {
+  const handleRegister = async (
+    event: FormEvent<HTMLFormElement>
+  ) => {
     event.preventDefault();
 
     const resident = residentOptions.find(
@@ -189,31 +160,115 @@ function HealthPage() {
       return;
     }
 
-    const newRecord: HealthRecord = {
-      id: Math.max(0, ...records.map((record) => record.id)) + 1,
-      residentName: resident.name,
-      roomNumber: resident.room,
+    const measurementValue = Number(form.measurementValue);
+
+    if (!Number.isFinite(measurementValue)) {
+      alert("측정값을 숫자로 입력해 주세요.");
+      return;
+    }
+
+    if (!form.measurementUnit.trim()) {
+      alert("측정 단위를 입력해 주세요.");
+      return;
+    }
+
+    const requestData = {
       measurementType: form.measurementType,
-      measurementValue: form.measurementValue.trim(),
+      measurementValue,
       measurementUnit: form.measurementUnit.trim(),
-      recordedAt: form.recordedAt,
+      recordedAt: `${form.recordedAt}T00:00:00`,
       memo: form.memo.trim(),
     };
 
-    setRecords((previous) => [...previous, newRecord]);
+    try {
+      if (editingRecord) {
+        // 기존 건강 기록 수정
+        const updatedRecord = await updateHealthRecord(
+          editingRecord.id,
+          requestData
+        );
 
-    setSearch("");
-    setTypeFilter("전체");
-    setDateFilter("");
-    setForm({
-      residentName: "김민수",
-      measurementType: "혈압",
-      measurementValue: "",
-      measurementUnit: "mmHg",
-      recordedAt: getLocalDate(),
-      memo: "",
-    });
-    setIsModalOpen(false);
+        const updatedViewRecord: HealthRecord = {
+          id: updatedRecord.id,
+          residentName: updatedRecord.resident?.name ?? editingRecord.residentName,
+          roomNumber: updatedRecord.resident?.roomNumber ?? editingRecord.roomNumber,
+          measurementType: updatedRecord.measurementType,
+          measurementValue: String(updatedRecord.measurementValue),
+          measurementUnit: updatedRecord.measurementUnit,
+          recordedAt: updatedRecord.recordedAt.slice(0, 10),
+          memo: updatedRecord.memo ?? "",
+        };
+
+        setRecords((previous) =>
+          previous.map((record) =>
+            record.id === editingRecord.id ? updatedViewRecord : record
+          )
+        );
+      } else {
+        // 신규 건강 기록 등록
+        const savedRecord = await createHealthRecord(
+          resident.id,
+          requestData
+        );
+
+        const newRecord: HealthRecord = {
+          id: savedRecord.id,
+          residentName: resident.name,
+          roomNumber: resident.roomNumber ?? "-",
+          measurementType: savedRecord.measurementType,
+          measurementValue: String(savedRecord.measurementValue),
+          measurementUnit: savedRecord.measurementUnit,
+          recordedAt: savedRecord.recordedAt.slice(0, 10),
+          memo: savedRecord.memo ?? "",
+        };
+
+        setRecords((previous) => [...previous, newRecord]);
+      }
+
+      setSearch("");
+      setTypeFilter("전체");
+      setDateFilter("");
+
+      setForm({
+        residentName: residentOptions[0]?.name ?? "",
+        measurementType: "혈압",
+        measurementValue: "",
+        measurementUnit: "mmHg",
+        recordedAt: getLocalDate(),
+        memo: "",
+      });
+
+      setEditingRecord(null);
+      setIsModalOpen(false);
+
+      alert(
+        editingRecord
+          ? "건강 기록이 수정되었습니다."
+          : "건강 기록이 등록되었습니다."
+      );
+
+    } catch (error) {
+      console.error("건강 기록 저장 실패:", error);
+      alert("건강 기록 저장에 실패했습니다. 백엔드 콘솔을 확인해 주세요.");
+    }
+  };
+
+
+
+  const handleDelete = async (id: number) => {
+    const confirmd = window.confirm("이 건강 기록을 삭제하시겠습니가?");
+
+    if (!confirmd) return;
+    try {
+      await deleteHealthRecord(id);
+
+      setRecords((previous) => previous.filter((record) => record.id !== id));
+
+      alert("건강 기록이 삭제되었습니다.");
+    } catch (error) {
+      console.error("건강 기록 삭제 실패:", error);
+      alert("건강 기록 삭제에 실패했습니다.");
+    }
   };
 
   return (
@@ -332,6 +387,7 @@ function HealthPage() {
                 <th>측정값</th>
                 <th>기록 일자</th>
                 <th>메모</th>
+                <th>관리</th>
               </tr>
             </thead>
 
@@ -364,11 +420,32 @@ function HealthPage() {
                     <td className="health-memo">
                       {record.memo || "-"}
                     </td>
+                    <td>
+                      <button type="button" onClick={() => {
+                        setEditingRecord(record);
+                        setForm({
+                          residentName: record.residentName,
+                          measurementType: record.measurementType,
+                          measurementValue: record.measurementValue,
+                          measurementUnit: record.measurementUnit,
+                          recordedAt: record.recordedAt,
+                          memo: record.memo,
+                        });
+                        setIsModalOpen(true);
+                      }}
+                      >
+                        수정
+                      </button>
+                      <button type="button" onClick={() => handleDelete(record.id)}
+                      >
+                        삭제
+                      </button>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="health-empty">
+                  <td colSpan={6} className="health-empty">
                     검색 조건에 맞는 건강 기록이 없습니다.
                   </td>
                 </tr>
@@ -412,8 +489,8 @@ function HealthPage() {
                 }
               >
                 {residentOptions.map((resident) => (
-                  <option key={resident.name} value={resident.name}>
-                    {resident.name} ({resident.room})
+                  <option key={resident.id} value={resident.name}>
+                    {resident.name} ({resident.roomNumber ?? "객실 미배정"})
                   </option>
                 ))}
               </select>
